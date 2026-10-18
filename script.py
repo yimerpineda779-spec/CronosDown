@@ -89,7 +89,11 @@ class App(tk.Tk):
         self.geometry("620x580")
         self.minsize(560, 520)
         self.configure(bg=BG)
-        
+        try:    #icono de la ventana
+            root.iconbitmap("icono.ico") 
+        except Exception as e:
+            print("No se pudo cargar el ícono en la ventana:", e)
+
         self.ruta = tk.StringVar(value=str(Path.home() / "Downloads"))
         self._estilos()
         self._interfaz()
