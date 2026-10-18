@@ -1,11 +1,15 @@
-import shutil
-import tkinter as tk
 import os
-import sys
+import shutil
 import sqlite3
+import sys
+import tkinter as tk
+from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
+# ======================================================================
+# CONFIGURACIÓN
+# ======================================================================
 FOLDERS = {
     "Images": ["jpg", "jpeg", "png", "gif", "bmp", "tiff", "ico", "avif", "jfif"],
     "Videos": ["mp4", "mov", "avi", "mkv", "flv", "wmv", "webm"],
@@ -17,22 +21,7 @@ FOLDERS = {
     "Código": ["py", "js", "html", "css", "java", "c", "cpp", "cs", "php", "rb", "go", "rs", "ts"],
     "Ejecutables": ["exe", "msi", "bat", "sh", "appimage", "apk", "deb", "rpm"],
 }
-#----------- base de datos en SQLite----------------------------------
-# Obtiene la ruta donde está corriendo el ejecutable o el script
-if getattr(sys, 'frozen', False):
-    # Si es un ejecutable compilado
-    base_path = os.path.dirname(sys.executable)
-else:
-    # Si estás corriendo el script normal en desarrollo
-    base_path = os.path.dirname(os.path.abspath(__file__))
 
-# Ruta completa para la base de datos al lado de tu .exe
-db_path = os.path.join(base_path, "cronosdown_registro.db")
-
-# Conectarte (esto creará el archivo automáticamente si no existe)
-conn = sqlite3.connect(db_path)
-cursor = conn.cursor()
-#---------------------------------------------------------------------
 # Colores
 BG = "#1e1e2e"
 CARD = "#2a2a3d"
@@ -42,15 +31,65 @@ ACCENT = "#7c5cff"
 ACCENT_HOVER = "#957bff"
 OK = "#5ee3a1"
 
+# ======================================================================
+# BASE DE DATOS (SQLite)
+# ======================================================================
+if getattr(sys, "frozen", False):
+    base_path = os.path.dirname(sys.executable)  # Ejecutable compilado (.exe)
+else:
+    base_path = os.path.dirname(os.path.abspath(__file__))  # Script normal
 
+db_path = os.path.join(base_path, "cronosdown_registro.db")
+
+
+def inicializar_base_datos():
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS historial (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fecha TEXT,
+            hora TEXT,
+            archivo TEXT,
+            carpeta TEXT
+        )
+        """
+    )
+    conn.commit()
+    conn.close()
+
+
+def registrar_movimiento(nombre_archivo, carpeta_destino):
+    ahora = datetime.now()
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "INSERT INTO historial (fecha, hora, archivo, carpeta) VALUES (?, ?, ?, ?)",
+        (ahora.strftime("%Y-%m-%d"), ahora.strftime("%H:%M:%S"), nombre_archivo, carpeta_destino),
+    )
+    conn.commit()
+    conn.close()
+
+
+def leer_historial():
+    conn = sqlite3.connect(db_path)
+    filas = conn.execute(
+        "SELECT fecha, hora, archivo, carpeta FROM historial ORDER BY id DESC"
+    ).fetchall()
+    conn.close()
+    return filas
+
+
+# ======================================================================
+# INTERFAZ
+# ======================================================================
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Ordenador de Archivos")
-        self.geometry("620x540")
-        self.minsize(560, 480)
+        self.geometry("620x580")
+        self.minsize(560, 520)
         self.configure(bg=BG)
-
+        
         self.ruta = tk.StringVar(value=str(Path.home() / "Downloads"))
         self._estilos()
         self._interfaz()
@@ -79,8 +118,18 @@ class App(tk.Tk):
             padding=(20, 11), font=("Segoe UI", 12, "bold"),
         )
         s.map("Main.TButton", background=[("active", ACCENT_HOVER)])
+        # Tabla del historial
+        s.configure(
+            "Treeview", background=CARD, fieldbackground=CARD, foreground=TEXT,
+            borderwidth=0, rowheight=26, font=("Segoe UI", 9),
+        )
+        s.configure(
+            "Treeview.Heading", background=BG, foreground=MUTED,
+            font=("Segoe UI", 9, "bold"), borderwidth=0, padding=6,
+        )
+        s.map("Treeview", background=[("selected", ACCENT)])
 
-    # ---------- Interfaz ----------
+    # ---------- Interfaz principal ----------
     def _interfaz(self):
         main = ttk.Frame(self, padding=24)
         main.pack(fill="both", expand=True)
@@ -91,7 +140,7 @@ class App(tk.Tk):
             style="Sub.TLabel",
         ).pack(anchor="w", pady=(2, 18))
 
-        # Tarjeta de selección de carpeta
+        # Selección de carpeta
         card = ttk.Frame(main, style="Card.TFrame", padding=14)
         card.pack(fill="x")
         ttk.Label(card, text="CARPETA A ORDENAR", style="Card.TLabel").pack(anchor="w", pady=(0, 6))
@@ -102,10 +151,14 @@ class App(tk.Tk):
             side="left", padx=(8, 0)
         )
 
-        # Botón principal
+        # Botones principales
         ttk.Button(main, text="Ordenar", style="Main.TButton", command=self.ordenar).pack(
-            fill="x", pady=18
+            fill="x", pady=(18, 8)
         )
+        ttk.Button(
+            main, text="Ver historial de cambios", style="Sec.TButton",
+            command=self.abrir_historial,
+        ).pack(fill="x", pady=(0, 14))
 
         # Registro
         ttk.Label(main, text="REGISTRO", style="Sub.TLabel").pack(anchor="w", pady=(0, 4))
@@ -115,14 +168,57 @@ class App(tk.Tk):
             caja, bg=CARD, fg=TEXT, relief="flat", font=("Consolas", 9),
             padx=10, pady=8, state="disabled", wrap="none",
         )
-        scroll = ttk.Scrollbar(caja, command=self.log.yview)
-        self.log.configure(yscrollcommand=scroll.set)
-        scroll.pack(side="right", fill="y")
+        scroll_y = ttk.Scrollbar(caja, orient="vertical", command=self.log.yview)
+        scroll_x = ttk.Scrollbar(caja, orient="horizontal", command=self.log.xview)
+        self.log.configure(yscrollcommand=scroll_y.set, xscrollcommand=scroll_x.set)
+        scroll_y.pack(side="right", fill="y")
+        scroll_x.pack(side="bottom", fill="x")
         self.log.pack(side="left", fill="both", expand=True)
 
         # Resumen
         self.resumen = ttk.Label(main, text="", style="Resumen.TLabel")
         self.resumen.pack(anchor="w", pady=(12, 0))
+
+    # ---------- Ventana de historial ----------
+    def abrir_historial(self):
+        win = tk.Toplevel(self)
+        win.title("Historial de movimientos")
+        win.geometry("680x420")
+        win.configure(bg=BG)
+
+        cont = ttk.Frame(win, padding=20)
+        cont.pack(fill="both", expand=True)
+
+        ttk.Label(cont, text="Historial de movimientos", style="Titulo.TLabel").pack(anchor="w")
+        ttk.Label(cont, text="Archivos ordenados anteriormente.", style="Sub.TLabel").pack(
+            anchor="w", pady=(2, 12)
+        )
+
+        columnas = ("Fecha", "Hora", "Archivo", "Carpeta destino")
+        marco = ttk.Frame(cont, style="Card.TFrame", padding=2)
+        marco.pack(fill="both", expand=True)
+        tree = ttk.Treeview(marco, columns=columnas, show="headings")
+        anchos = {"Fecha": 90, "Hora": 80, "Archivo": 300, "Carpeta destino": 130}
+        for col in columnas:
+            tree.heading(col, text=col)
+            tree.column(col, width=anchos[col], anchor="w")
+        sb = ttk.Scrollbar(marco, command=tree.yview)
+        tree.configure(yscrollcommand=sb.set)
+        sb.pack(side="right", fill="y")
+        tree.pack(side="left", fill="both", expand=True)
+
+        def cargar():
+            tree.delete(*tree.get_children())
+            try:
+                for fila in leer_historial():
+                    tree.insert("", "end", values=fila)
+            except Exception as e:
+                messagebox.showerror("Error", f"No se pudo leer el historial:\n{e}", parent=win)
+
+        ttk.Button(cont, text="Actualizar", style="Sec.TButton", command=cargar).pack(
+            anchor="e", pady=(12, 0)
+        )
+        cargar()
 
     # ---------- Lógica ----------
     def examinar(self):
@@ -167,6 +263,7 @@ class App(tk.Tk):
                         try:
                             destino_dir.mkdir(exist_ok=True)
                             shutil.move(str(archivo), str(destino))
+                            registrar_movimiento(archivo.name, nombre)
                             conteo[nombre] = conteo.get(nombre, 0) + 1
                             self.escribir(f"{archivo.name}  ->  {nombre}")
                         except Exception as e:
@@ -190,5 +287,9 @@ class App(tk.Tk):
         self.resumen.configure(text=texto, wraplength=560, justify="left")
 
 
+# ======================================================================
+# INICIO
+# ======================================================================
 if __name__ == "__main__":
+    inicializar_base_datos()
     App().mainloop()
