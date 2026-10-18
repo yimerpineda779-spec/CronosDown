@@ -1,5 +1,8 @@
 import shutil
 import tkinter as tk
+import os
+import sys
+import sqlite3
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
@@ -14,7 +17,22 @@ FOLDERS = {
     "Código": ["py", "js", "html", "css", "java", "c", "cpp", "cs", "php", "rb", "go", "rs", "ts"],
     "Ejecutables": ["exe", "msi", "bat", "sh", "appimage", "apk", "deb", "rpm"],
 }
+#----------- base de datos en SQLite----------------------------------
+# Obtiene la ruta donde está corriendo el ejecutable o el script
+if getattr(sys, 'frozen', False):
+    # Si es un ejecutable compilado
+    base_path = os.path.dirname(sys.executable)
+else:
+    # Si estás corriendo el script normal en desarrollo
+    base_path = os.path.dirname(os.path.abspath(__file__))
 
+# Ruta completa para la base de datos al lado de tu .exe
+db_path = os.path.join(base_path, "cronosdown_registro.db")
+
+# Conectarte (esto creará el archivo automáticamente si no existe)
+conn = sqlite3.connect(db_path)
+cursor = conn.cursor()
+#---------------------------------------------------------------------
 # Colores
 BG = "#1e1e2e"
 CARD = "#2a2a3d"
