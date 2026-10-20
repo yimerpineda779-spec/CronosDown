@@ -1,0 +1,28 @@
+# UTF-8
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(3, 1, 0, 0),
+    prodvers=(3, 1, 0, 0),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+    ),
+  kids=[
+    StringFileInfo(
+      [
+      StringTable(
+        '040904B0',
+        [StringStruct('CompanyName', 'Yimer Pineda'),
+         StringStruct('FileDescription', 'CronosDown - Organizador de Archivos'),
+         StringStruct('FileVersion', '3.1.0'),
+         StringStruct('InternalName', 'CronosDown'),
+         StringStruct('LegalCopyright', '© 2026 Yimer Pineda. Todos los derechos reservados.'),
+         StringStruct('OriginalFilename', 'CronosDown.exe'),
+         StringStruct('ProductName', 'CronosDown')])
+      ]), 
+    VarFileInfo([VarStruct('Translation', [1033, 1204])])
+  ]
+)

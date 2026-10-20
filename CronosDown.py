@@ -89,8 +89,10 @@ class App(tk.Tk):
         self.geometry("620x580")
         self.minsize(560, 520)
         self.configure(bg=BG)
-        try:    #icono de la ventana
-            root.iconbitmap("icono.ico") 
+        try:  # icono de la ventana
+            icon_path = Path(__file__).resolve().with_name("icono.ico")
+            if icon_path.exists():
+                self.iconbitmap(str(icon_path))
         except Exception as e:
             print("No se pudo cargar el ícono en la ventana:", e)
 
@@ -132,6 +134,16 @@ class App(tk.Tk):
             font=("Segoe UI", 9, "bold"), borderwidth=0, padding=6,
         )
         s.map("Treeview", background=[("selected", ACCENT)])
+        
+        s.configure(
+            "Discreto.TButton", background=BG, foreground=MUTED, borderwidth=0,
+            padding=(6, 3), font=("Segoe UI", 8),
+        )
+        s.map(
+            "Discreto.TButton",
+            background=[("active", CARD)],
+            foreground=[("active", TEXT)],
+        )
 
     # ---------- Interfaz principal ----------
     def _interfaz(self):
@@ -163,6 +175,14 @@ class App(tk.Tk):
             main, text="Ver historial de cambios", style="Sec.TButton",
             command=self.abrir_historial,
         ).pack(fill="x", pady=(0, 14))
+
+        fila_inferior = ttk.Frame(main)
+        fila_inferior.pack(fill="x", side="bottom", pady=(8, 0))
+
+        ttk.Button(
+            fila_inferior, text="Acerca de", style="Discreto.TButton",
+            command=self.mostrar_acerca_de,
+        ).pack(side="right")
 
         # Registro
         ttk.Label(main, text="REGISTRO", style="Sub.TLabel").pack(anchor="w", pady=(0, 4))
@@ -289,7 +309,15 @@ class App(tk.Tk):
         if errores:
             texto += f". Errores: {errores}"
         self.resumen.configure(text=texto, wraplength=560, justify="left")
-
+        
+    def mostrar_acerca_de(self):
+        messagebox.showinfo(
+            "Acerca de CronosDown",
+            "CronosDown v3.1.0\n\n"
+            "Desarrollado por: Yimer Pineda\n"
+            "Todos los derechos reservados © 2026\n\n"
+            "Herramienta inteligente de ordenamiento de archivos."
+    )
 
 # ======================================================================
 # INICIO
