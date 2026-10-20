@@ -89,10 +89,17 @@ class App(tk.Tk):
         self.geometry("620x580")
         self.minsize(560, 520)
         self.configure(bg=BG)
-        try:  # icono de la ventana
-            icon_path = Path(__file__).resolve().with_name("icono.ico")
-            if icon_path.exists():
-                self.iconbitmap(str(icon_path))
+
+        def resource_path(relative_path):
+            try:
+                base_path = sys._MEIPASS
+            except Exception:
+                base_path = os.path.abspath(".")
+            return os.path.join(base_path, relative_path)
+
+        try:  # icono de la ventana de forma segura
+            icon_path = resource_path("icono.ico")
+            self.iconbitmap(icon_path)
         except Exception as e:
             print("No se pudo cargar el ícono en la ventana:", e)
 
